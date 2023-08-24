@@ -17,6 +17,8 @@ var (
 	EditingUserErr            = "EDITING_USER_ERR"
 	UserDoesNotHaveSegmentErr = "USER_DOES_NOT_HAVE_SEGMENT"
 	UserAlreadyHasSegmentErr  = "USER_ALREADY_HAS_SEGMENT"
+	ConvertingUserIdErr       = "CONVERTING_USER_ID_ERR"
+	GettingUserSegmentsErr    = "GETTING_USER_SEGMENTS_ERR"
 )
 
 func HandleError(ctx *gin.Context, status int, errMsg string, err error) {

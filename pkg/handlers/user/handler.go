@@ -6,11 +6,12 @@ import (
 	"market/pkg/errors"
 	"market/pkg/repository/user"
 	"net/http"
+	"strconv"
 )
 
 type IHandler interface {
-	GetUsersSlugs(ctx *gin.Context)
-	EditUsersSlugs(ctx *gin.Context)
+	GetUsersSegments(ctx *gin.Context)
+	EditUsersSegments(ctx *gin.Context)
 }
 
 type Handler struct {
@@ -21,13 +22,32 @@ func NewHandler(userRepo user.IRepository) *Handler {
 	return &Handler{repo: userRepo}
 }
 
-func (h *Handler) GetUsersSlugs(ctx *gin.Context) {
-	ctx.JSON(200, gin.H{
-		"message": "pong",
+func (h *Handler) GetUsersSegments(ctx *gin.Context) {
+	userIdStr, ok := ctx.GetQuery("user_id")
+	if !ok {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptyUserIDErr, nil)
+		return
+	}
+
+	userID, err := strconv.ParseUint(userIdStr, 10, 64)
+	if err != nil {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.ConvertingUserIdErr, err)
+		return
+	}
+
+	segments, err := h.repo.GetUsersSegments(userID)
+	if err != nil {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.GettingUserSegmentsErr, err)
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"segments": segments,
 	})
+
 }
 
-func (h *Handler) EditUsersSlugs(ctx *gin.Context) {
+func (h *Handler) EditUsersSegments(ctx *gin.Context) {
 	var payload dtos.EditUserDtoRequest
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
@@ -40,7 +60,7 @@ func (h *Handler) EditUsersSlugs(ctx *gin.Context) {
 		return
 	}
 
-	if err := h.repo.EditUsersSlugs(payload.ToCreate, payload.ToDelete, payload.UserID); err != nil {
+	if err := h.repo.EditUsersSegments(payload.ToCreate, payload.ToDelete, payload.UserID); err != nil {
 		errors.HandleError(ctx, http.StatusBadRequest, errors.EditingUserErr, err)
 		return
 	}

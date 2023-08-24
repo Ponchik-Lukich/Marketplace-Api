@@ -13,7 +13,7 @@
         ],
         "parameters": [
           {
-            "name": "userId",
+            "name": "user_id",
             "in": "query",
             "required": true,
             "description": "ID of the user",

@@ -18,8 +18,8 @@ func SetupRouter(repositories repository.IRepositories) *gin.Engine {
 	{
 		usersG := v1.Group("/users")
 		{
-			usersG.GET("", usersH.GetUsersSlugs)
-			usersG.PATCH("", usersH.EditUsersSlugs)
+			usersG.GET("", usersH.GetUsersSegments)
+			usersG.PATCH("", usersH.EditUsersSegments)
 		}
 
 		segmentsG := v1.Group("/segments")

@@ -7,5 +7,5 @@ type Segment struct {
 
 	ID    uint64 `gorm:"primary_key;auto_increment"`
 	Name  string
-	Users []UserSegment `gorm:"foreignKey:SegmentID"`
+	Users []User `gorm:"many2many:user_segments;"`
 }
