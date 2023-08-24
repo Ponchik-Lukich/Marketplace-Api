@@ -24,8 +24,8 @@ func SetupRouter(repositories repository.IRepositories) *gin.Engine {
 
 		segmentsG := v1.Group("/segments")
 		{
-			segmentsG.POST("", segmentsH.CreateSegments)
-			segmentsG.DELETE("", segmentsH.DeleteSegments)
+			segmentsG.POST("", segmentsH.CreateSegment)
+			segmentsG.DELETE("", segmentsH.DeleteSegment)
 		}
 
 		v1.StaticFile("/swagger/api.json", "./api/api.json")
