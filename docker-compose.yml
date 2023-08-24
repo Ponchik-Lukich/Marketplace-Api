@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    restart: on-failure
+    environment:
+      POSTGRES_DB: avito
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_HOST: postgres
+    volumes:
+      - db:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+  backend:
+    restart: on-failure
+    build: .
+    container_name: backend
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+volumes:
+  db:

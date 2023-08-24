@@ -6,7 +6,10 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/file"
 	"log"
+	"market/pkg/repository"
+	"market/pkg/router"
 	"market/pkg/storage"
+	"net/http"
 )
 
 const (
@@ -51,13 +54,18 @@ func main() {
 		log.Fatalf("failed to initialize storage: %v", err)
 	}
 
-	//repos := repo.NewRepositories(db)
-	//r := router.SetupRouter(repos)
+	err = db.MakeMigrations()
+	if err != nil {
+		log.Fatalf("failed to make migrations: %v", err)
+	}
 
-	//err = http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), r)
-	//if err != nil {
-	//	log.Fatal(err)
-	//}
+	repos := repository.NewRepositories(db)
+	r := router.SetupRouter(repos)
+
+	err = http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), r)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if err := db.Close(); err != nil {
 		log.Fatalf("failed to close connection to database: %v", err)
