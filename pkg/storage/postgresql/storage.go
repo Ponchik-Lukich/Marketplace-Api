@@ -6,6 +6,7 @@ import (
 	"gorm.io/gorm"
 	"market/pkg/errors"
 	"market/pkg/models"
+	"time"
 )
 
 type Storage struct {
@@ -46,7 +47,7 @@ func (s *Storage) Init() *gorm.DB {
 }
 
 func (s *Storage) MakeMigrations() error {
-	if err := s.db.AutoMigrate(&models.User{}, &models.Segment{}, &models.UserSegment{}); err != nil {
+	if err := s.db.AutoMigrate(&models.User{}, &models.Segment{}, &models.UserSegment{}, &models.Log{}); err != nil {
 		return fmt.Errorf("failed migrations: %w", err)
 	}
 	return nil
@@ -111,31 +112,33 @@ func (s *Storage) GetIDsAndMissingNames(names []string) ([]uint64, []string, err
 	return existingIds, missingNames, nil
 }
 
-func (s *Storage) AddSegmentsToUser(toCreate []uint64, toDelete []uint64, userID uint64) error {
+func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.Log, error) {
 	db := s.Init()
+
+	var logs []models.Log
 
 	tx := db.Begin()
 	if tx.Error != nil {
-		return tx.Error
+		return nil, tx.Error
 	}
 
 	for _, segmentID := range toCreate {
-
 		var existingUserSegment models.UserSegment
+
 		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
 			if err != gorm.ErrRecordNotFound {
 				tx.Rollback()
-				return err
+				return nil, err
 			}
 		} else {
 			if existingUserSegment.DeletedAt.Valid {
 				if err := tx.Unscoped().Model(&existingUserSegment).Update("deleted_at", nil).Error; err != nil {
 					tx.Rollback()
-					return err
+					return nil, err
 				}
 				continue
 			} else {
-				return fmt.Errorf(errors.UserAlreadyHasSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+				return nil, fmt.Errorf(errors.UserAlreadyHasSegmentErr + " " + fmt.Sprintf("%d", segmentID))
 			}
 		}
 
@@ -146,25 +149,71 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toDelete []uint64, userID
 
 		if err := tx.Create(&userSegment).Error; err != nil {
 			tx.Rollback()
-			return err
+			return nil, err
 		}
+		timeStamp := time.Now()
+
+		log := models.Log{
+			UserID:    userID,
+			EventType: "добавление",
+			Segment:   "",
+			Time:      &timeStamp,
+		}
+
+		logs = append(logs, log)
+	}
+
+	return logs, tx.Commit().Error
+}
+
+func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]models.Log, error) {
+	db := s.Init()
+
+	var logs []models.Log
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
 	}
 
 	for _, segmentID := range toDelete {
 		var existingUserSegment models.UserSegment
+
 		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
-			return err
+			return nil, err
 		} else {
 			if existingUserSegment.DeletedAt.Valid {
-				return fmt.Errorf(errors.UserDoesNotHaveSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+				return nil, fmt.Errorf(errors.UserDoesNotHaveSegmentErr + " " + fmt.Sprintf("%d", segmentID))
 			} else {
 				if err := tx.Delete(&existingUserSegment).Error; err != nil {
 					tx.Rollback()
-					return err
+					return nil, err
 				}
 			}
 		}
+
+		timeStamp := time.Now()
+
+		log := models.Log{
+			UserID:    userID,
+			EventType: "добавление",
+			Segment:   "",
+			Time:      &timeStamp,
+		}
+
+		logs = append(logs, log)
 	}
 
-	return tx.Commit().Error
+	return logs, tx.Commit().Error
+}
+
+func (s *Storage) AddLogs(logs []models.Log) error {
+	db := s.Init()
+	return db.Create(&logs).Error
+}
+
+func (s *Storage) CreateUser(userID uint64) error {
+	db := s.Init()
+	user := models.User{ID: userID}
+	return db.Create(&user).Error
 }

@@ -3,6 +3,7 @@ package user
 import (
 	"fmt"
 	"market/pkg/dtos"
+	"market/pkg/errors"
 	"market/pkg/storage"
 )
 
@@ -47,8 +48,26 @@ func (r *Repository) EditUsersSegments(toCreate []string, toDelete []string, use
 		return fmt.Errorf("missing names: %v", missingNames)
 	}
 
-	if err := r.storage.AddSegmentsToUser(toCreateIds, toDeleteIds, userID); err != nil {
-		return err
+	err = r.storage.CreateUser(userID)
+	if err != nil {
+		return fmt.Errorf(errors.UpdatingUserErr)
+	}
+
+	createLogs, err := r.storage.AddSegmentsToUser(toCreateIds, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %v", errors.CreateSegmentsErr, err)
+	}
+
+	deleteLogs, err := r.storage.DeleteSegmentsFromUser(toDeleteIds, userID)
+	if err != nil {
+		return fmt.Errorf("%s: %v", errors.DeleteSegmentsErr, err)
+	}
+
+	logs := append(createLogs, deleteLogs...)
+
+	err = r.storage.AddLogs(logs)
+	if err != nil {
+		return fmt.Errorf("%s: %v", errors.AddingLogsErr, err)
 	}
 
 	return nil
@@ -58,6 +77,11 @@ func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse,
 	segments, err := r.storage.GetSegmentsByUserID(userID)
 	if err != nil {
 		return nil, err
+	}
+
+	err = r.storage.CreateUser(userID)
+	if err != nil {
+		return nil, fmt.Errorf(errors.UpdatingUserErr)
 	}
 
 	var segmentsDto []dtos.SegmentDtoResponse
