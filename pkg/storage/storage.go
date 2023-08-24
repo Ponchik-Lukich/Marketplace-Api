@@ -14,6 +14,7 @@ type IStorage interface {
 	CreateSegment(name string) error
 	DeleteSegment(name string) error
 	GetSegmentsByUserID(userID uint64) ([]models.Segment, error)
-	AddSegmentsToUser(toCreate []string, toDelete []string, userID uint64) []error
 	GetSegmentByName(name string) (models.Segment, error)
+	GetIDsAndMissingNames(names []string) ([]uint64, []string, error)
+	AddSegmentsToUser(toCreate []uint64, toDelete []uint64, userID uint64) error
 }

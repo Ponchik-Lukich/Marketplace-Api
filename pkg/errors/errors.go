@@ -11,6 +11,12 @@ var (
 	SegmentsNotFoundErr = "SEGMENTS_NOT_FOUND"
 	EmptySegmentNameErr = "EMPTY_SEGMENT_NAME"
 	SegmentAlreadyExist = "SEGMENT_ALREADY_EXIST"
+	SlugsNotFoundErr    = "SLUGS_NOT_FOUND"
+
+	EmptyUserIDErr            = "EMPTY_USER_ID"
+	EditingUserErr            = "EDITING_USER_ERR"
+	UserDoesNotHaveSegmentErr = "USER_DOES_NOT_HAVE_SEGMENT"
+	UserAlreadyHasSegmentErr  = "USER_ALREADY_HAS_SEGMENT"
 )
 
 func HandleError(ctx *gin.Context, status int, errMsg string, err error) {

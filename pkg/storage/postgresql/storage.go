@@ -86,24 +86,85 @@ func (s *Storage) GetSegmentsByUserID(userID uint64) ([]models.Segment, error) {
 	return segments, err
 }
 
-func (s *Storage) AddSegmentsToUser(toCreate []string, toDelete []string, userID uint64) []error {
-	// add segments to users_segments
-	//var segments []models.Segment
-	//tx := s.db.Where("name IN ?", toCreate).Find(&segments)
-	//if tx.Error != nil {
-	//	return []error{tx.Error}
-	//}
-	//if tx.RowsAffected != int64(len(toCreate)) {
-	//	return []error{fmt.Errorf(errors.SegmentsNotFoundErr)}
-	//}
-	//
-	//var user models.User
-	//tx = s.db.First(&user, userID)
-	//if tx.Error != nil {
-	//	return []error{tx.Error}
-	//}
-	//if tx.RowsAffected == 0 {
-	//	return []error{fmt.Errorf(errors.UserNotFoundErr)}
-	//}
-	return nil
+func (s *Storage) GetIDsAndMissingNames(names []string) ([]uint64, []string, error) {
+	var existingIds []uint64
+	var missingNames []string
+
+	db := s.Init()
+	var segments []models.Segment
+	if err := db.Where("name IN ?", names).Find(&segments).Error; err != nil {
+		return nil, nil, err
+	}
+
+	existingNamesMap := make(map[string]bool)
+	for _, segment := range segments {
+		existingIds = append(existingIds, segment.ID)
+		existingNamesMap[segment.Name] = true
+	}
+
+	for _, name := range names {
+		if _, ok := existingNamesMap[name]; !ok {
+			missingNames = append(missingNames, name)
+		}
+	}
+
+	return existingIds, missingNames, nil
+}
+
+func (s *Storage) AddSegmentsToUser(toCreate []uint64, toDelete []uint64, userID uint64) error {
+	db := s.Init()
+
+	tx := db.Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	for _, segmentID := range toCreate {
+
+		var existingUserSegment models.UserSegment
+		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				tx.Rollback()
+				return err
+			}
+		} else {
+			if existingUserSegment.DeletedAt.Valid {
+				if err := tx.Unscoped().Model(&existingUserSegment).Update("deleted_at", nil).Error; err != nil {
+					tx.Rollback()
+					return err
+				}
+				continue
+			} else {
+				return fmt.Errorf(errors.UserAlreadyHasSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+			}
+		}
+
+		userSegment := models.UserSegment{
+			UserID:    userID,
+			SegmentID: segmentID,
+		}
+
+		if err := tx.Create(&userSegment).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+
+	for _, segmentID := range toDelete {
+		var existingUserSegment models.UserSegment
+		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
+			return err
+		} else {
+			if existingUserSegment.DeletedAt.Valid {
+				return fmt.Errorf(errors.UserDoesNotHaveSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+			} else {
+				if err := tx.Delete(&existingUserSegment).Error; err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+		}
+	}
+
+	return tx.Commit().Error
 }
