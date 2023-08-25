@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"market/pkg/constant"
+	"market/pkg/dtos"
 	"market/pkg/errors"
 	"market/pkg/models"
 	"time"
@@ -112,7 +114,7 @@ func (s *Storage) GetIDsAndMissingNames(names []string) ([]uint64, []string, err
 	return existingIds, missingNames, nil
 }
 
-func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.Log, error) {
+func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.CreateSegmentDto, userID uint64) ([]models.Log, error) {
 	db := s.Init()
 
 	var logs []models.Log
@@ -122,7 +124,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.
 		return nil, tx.Error
 	}
 
-	for _, segmentID := range toCreate {
+	for i, segmentID := range toCreate {
 		var existingUserSegment models.UserSegment
 		flag := false
 
@@ -147,6 +149,15 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.
 			userSegment := models.UserSegment{
 				UserID:    userID,
 				SegmentID: segmentID,
+			}
+
+			if toCreateDto[i].DeleteTime != "" {
+				expireTime, err := time.Parse(constant.FullLayout, toCreateDto[i].DeleteTime)
+				if err != nil {
+					tx.Rollback()
+					return nil, err
+				}
+				userSegment.ExpirationDate = expireTime
 			}
 
 			if err := tx.Create(&userSegment).Error; err != nil {
@@ -248,10 +259,12 @@ func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 		Select("user_segments.user_id, user_segments.segment_id, segments.name as segment_name").
 		Joins("JOIN segments ON user_segments.segment_id = segments.id").
 		Where("user_segments.expiration_date < ?", moment).
+		Where("user_segments.deleted_at IS NULL").
 		Scan(&segmentsToDelete).Error; err != nil {
 		return nil, err
 	}
 
+	println(len(segmentsToDelete), "@@@@@@@@@@@@@@@@")
 	var logs []models.Log
 	timeStamp := time.Now()
 	for _, segment := range segmentsToDelete {

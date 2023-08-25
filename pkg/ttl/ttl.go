@@ -21,6 +21,5 @@ func TtlWorker(repo segment.IRepository) {
 
 		log.Println("Deleting expired segments")
 		DeleteExpiredSegments(repo, now)
-		log.Println("Expired segments deleted")
 	}
 }

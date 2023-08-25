@@ -11,6 +11,11 @@ type SegmentDtoResponse struct {
 	Name string `json:"slug"`
 }
 
+type CreateSegmentDto struct {
+	Name       string `json:"name"`
+	DeleteTime string `json:"ttl,omitempty"`
+}
+
 func ToSegmentDto(segment *models.Segment) SegmentDtoResponse {
 	return SegmentDtoResponse{
 		ID:   segment.ID,

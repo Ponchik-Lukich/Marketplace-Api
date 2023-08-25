@@ -24,6 +24,7 @@ var (
 	UpdatingUserErr           = "CREATING_OR_UPDATING_USER_ERR"
 	AddingLogsErr             = "ADDING_LOGS_ERR"
 	InvalidDateErr            = "INVALID_DATE_ERR"
+	TimeParsingErr            = "TIME_PARSING_ERR"
 )
 
 func HandleError(ctx *gin.Context, status int, errMsg string, err error) {

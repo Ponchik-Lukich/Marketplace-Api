@@ -13,7 +13,7 @@ import (
 )
 
 type IRepository interface {
-	EditUsersSegments(toCreate []string, toDelete []string, userID uint64) error
+	EditUsersSegments(toCreate []dtos.CreateSegmentDto, toDelete []string, userID uint64) error
 	GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, error)
 	CreateUserLogs(date string, userID uint64) (string, error)
 }
@@ -26,7 +26,13 @@ func NewRepository(storage storage.IStorage) IRepository {
 	return &Repository{storage}
 }
 
-func (r *Repository) EditUsersSegments(toCreate []string, toDelete []string, userID uint64) error {
+func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDelete []string, userID uint64) error {
+	toCreate := make([]string, len(toCreateDto))
+
+	for i, segment := range toCreateDto {
+		toCreate[i] = segment.Name
+	}
+
 	toCreateIds, toCreateMissingNames, err := r.storage.GetIDsAndMissingNames(toCreate)
 	if err != nil {
 		return err
@@ -59,7 +65,7 @@ func (r *Repository) EditUsersSegments(toCreate []string, toDelete []string, use
 		return fmt.Errorf(errors.UpdatingUserErr)
 	}
 
-	createLogs, err := r.storage.AddSegmentsToUser(toCreateIds, userID)
+	createLogs, err := r.storage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
 	if err != nil {
 		return fmt.Errorf("%s: %v", errors.CreateSegmentsErr, err)
 	}
