@@ -16,6 +16,7 @@ type IStorage interface {
 	DeleteSegment(name string) error
 	GetSegmentsByUserID(userID uint64) ([]models.Segment, error)
 	GetSegmentByName(name string) (models.Segment, error)
+	DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 
 	CreateUser(userID uint64) error
 	GetIDsAndMissingNames(names []string) ([]uint64, []string, error)

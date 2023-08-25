@@ -9,6 +9,7 @@ import (
 	"market/pkg/repository"
 	"market/pkg/router"
 	"market/pkg/storage"
+	"market/pkg/ttl"
 	"net/http"
 )
 
@@ -61,6 +62,8 @@ func main() {
 
 	repos := repository.NewRepositories(db)
 	r := router.SetupRouter(repos)
+
+	go ttl.TtlWorker(repos.GetSegmentsRepo())
 
 	err = http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), r)
 	if err != nil {

@@ -4,11 +4,13 @@ import (
 	"fmt"
 	"market/pkg/errors"
 	"market/pkg/storage"
+	"time"
 )
 
 type IRepository interface {
 	CreateSegment(name string) error
 	DeleteSegment(name string) error
+	DeleteExpiredSegments(moment *time.Time) error
 }
 
 type Repository struct {
@@ -37,4 +39,20 @@ func (r *Repository) DeleteSegment(name string) error {
 		return err
 	}
 	return r.storage.DeleteSegment(name)
+}
+
+func (r *Repository) DeleteExpiredSegments(moment *time.Time) error {
+	logs, err := r.storage.DeleteExpiredSegments(moment)
+	if err != nil {
+		return err
+	}
+
+	if len(logs) > 0 {
+		err = r.storage.AddLogs(logs)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

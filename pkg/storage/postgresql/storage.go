@@ -235,3 +235,38 @@ func (s *Storage) GetUserLogs(start *time.Time, end *time.Time, userID uint64) (
 	}
 	return logs, nil
 }
+
+func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error) {
+	db := s.Init()
+
+	var segmentsToDelete []struct {
+		UserID      uint64
+		SegmentID   uint64
+		SegmentName string
+	}
+	if err := db.Table("user_segments").
+		Select("user_segments.user_id, user_segments.segment_id, segments.name as segment_name").
+		Joins("JOIN segments ON user_segments.segment_id = segments.id").
+		Where("user_segments.expiration_date < ?", moment).
+		Scan(&segmentsToDelete).Error; err != nil {
+		return nil, err
+	}
+
+	var logs []models.Log
+	timeStamp := time.Now()
+	for _, segment := range segmentsToDelete {
+		log := models.Log{
+			UserID:    segment.UserID,
+			EventType: "удаление",
+			Segment:   segment.SegmentName,
+			Time:      &timeStamp,
+		}
+		logs = append(logs, log)
+	}
+
+	if err := db.Where("expiration_date < ?", moment).Delete(&models.UserSegment{}).Error; err != nil {
+		return nil, err
+	}
+
+	return logs, nil
+}
