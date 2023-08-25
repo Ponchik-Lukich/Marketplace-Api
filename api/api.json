@@ -85,27 +85,38 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "addSegments": {
+                  "to_create": {
                     "type": "array",
                     "items": {
-                      "type": "string",
-                      "description": "Segment slug to add"
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "ttl": {
+                          "type": "string",
+                          "format": "date"
+                        }
+                      },
+                      "required": [
+                        "name"
+                      ]
                     }
                   },
-                  "removeSegments": {
+                  "to_delete": {
                     "type": "array",
                     "items": {
                       "type": "string",
                       "description": "Segment slug to remove"
                     }
                   },
-                  "userId": {
+                  "user_id": {
                     "type": "string",
                     "description": "ID of the user"
                   }
                 },
                 "required": [
-                  "userId"
+                  "user_id"
                 ]
               }
             }
@@ -224,6 +235,10 @@
                   "slug": {
                     "type": "string",
                     "description": "Name of the segment"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "description": "Percentage of users to add this segment"
                   }
                 },
                 "required": [

@@ -3,6 +3,7 @@ package user
 import (
 	"encoding/csv"
 	"fmt"
+	"market/pkg/constant"
 	"market/pkg/dtos"
 	"market/pkg/errors"
 	"market/pkg/models"
@@ -28,7 +29,6 @@ func NewRepository(storage storage.IStorage) IRepository {
 
 func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDelete []string, userID uint64) error {
 	toCreate := make([]string, len(toCreateDto))
-
 	for i, segment := range toCreateDto {
 		toCreate[i] = segment.Name
 	}
@@ -42,37 +42,23 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 		return err
 	}
 
-	var missingNames []string
-
-	if len(toCreateMissingNames) > 0 {
-		for _, name := range toCreateMissingNames {
-			missingNames = append(missingNames, name)
-		}
-	}
-
-	if len(toDeleteMissingNames) > 0 {
-		for _, name := range toDeleteMissingNames {
-			missingNames = append(missingNames, name)
-		}
-	}
-
+	missingNames := append(toCreateMissingNames, toDeleteMissingNames...)
 	if len(missingNames) > 0 {
-		return fmt.Errorf("missing names: %v", missingNames)
+		return fmt.Errorf("%s: %v", errors.MissingNamesErr400, missingNames)
 	}
 
-	err = r.storage.CreateUser(userID)
-	if err != nil {
-		return fmt.Errorf(errors.UpdatingUserErr)
+	if err := r.storage.CreateUser(userID); err != nil {
+		return fmt.Errorf("%s: %v", errors.UpdatingUserErr500, err)
 	}
 
 	createLogs, err := r.storage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
 	if err != nil {
-		return fmt.Errorf("%s: %v", errors.CreateSegmentsErr, err)
+		return err
 	}
 
 	deleteLogs, err := r.storage.DeleteSegmentsFromUser(toDeleteIds, userID)
 	if err != nil {
-		return fmt.Errorf("%s: %v", errors.DeleteSegmentsErr, err)
+		return fmt.Errorf("%s: %v", errors.DeleteSegmentsErr500, err)
 	}
 
 	if len(createLogs) == 0 && len(deleteLogs) == 0 {
@@ -97,7 +83,7 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 
 	err = r.storage.AddLogs(logs)
 	if err != nil {
-		return fmt.Errorf("%s: %v", errors.AddingLogsErr, err)
+		return fmt.Errorf("%s: %v", errors.AddingLogsErr500, err)
 	}
 
 	return nil
@@ -111,7 +97,7 @@ func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse,
 
 	err = r.storage.CreateUser(userID)
 	if err != nil {
-		return nil, fmt.Errorf(errors.UpdatingUserErr)
+		return nil, fmt.Errorf("%s: %v", errors.UpdatingUserErr500, err)
 	}
 
 	var segmentsDto []dtos.SegmentDtoResponse
@@ -124,9 +110,9 @@ func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse,
 
 func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) {
 
-	t, err := time.Parse("2006-01", date)
+	t, err := time.Parse(constant.Layout, date)
 	if err != nil {
-		return "", fmt.Errorf(errors.InvalidDateErr)
+		return "", fmt.Errorf(errors.DateParsingErr400)
 	}
 
 	startTime := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
@@ -134,12 +120,12 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) 
 
 	logs, err := r.storage.GetUserLogs(&startTime, &endTime, userID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %v", errors.GettingLogsErr500, err)
 	}
 
-	file, err := os.Create("/tmp/" + strconv.FormatUint(userID, 10) + ".csv")
+	file, err := os.Create(constant.DockerPath + strconv.FormatUint(userID, 10) + "_" + date + ".csv")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %v", errors.CreatingFileErr500, err)
 	}
 	defer file.Close()
 
@@ -155,7 +141,7 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) 
 		}
 		err := writer.Write(record)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("%s: %v", errors.WritingFileErr500, err)
 		}
 	}
 

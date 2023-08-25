@@ -7,6 +7,7 @@ import (
 	"market/pkg/repository/user"
 	"net/http"
 	"strconv"
+	"strings"
 )
 
 type IHandler interface {
@@ -38,7 +39,7 @@ func (h *Handler) GetUsersSegments(ctx *gin.Context) {
 
 	segments, err := h.repo.GetUsersSegments(userID)
 	if err != nil {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.GettingUserSegmentsErr, err)
+		errors.HandleError(ctx, http.StatusInternalServerError, errors.GettingUserSegmentsErr, err)
 		return
 	}
 
@@ -62,8 +63,16 @@ func (h *Handler) EditUsersSegments(ctx *gin.Context) {
 	}
 
 	if err := h.repo.EditUsersSegments(payload.ToCreate, payload.ToDelete, payload.UserID); err != nil {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.EditingUserErr, err)
-		return
+		if strings.Contains(err.Error(), errors.MissingNamesErr400) ||
+			strings.Contains(err.Error(), errors.UserAlreadyHasSegmentErr400) ||
+			strings.Contains(err.Error(), errors.DateParsingErr400) ||
+			strings.Contains(err.Error(), errors.UserDoesNotHaveSegmentErr400) {
+			errors.HandleError(ctx, http.StatusBadRequest, errors.EditingUserErr, err)
+			return
+		} else {
+			errors.HandleError(ctx, http.StatusInternalServerError, errors.EditingUserErr, err)
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -75,7 +84,7 @@ func (h *Handler) CreateUserLogs(ctx *gin.Context) {
 	var payload dtos.GetLogsDtoRequest
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
-		errors.HandleError(ctx, http.StatusInternalServerError, errors.BindingJSONErr, err)
+		errors.HandleError(ctx, http.StatusBadRequest, errors.BindingJSONErr, err)
 		return
 	}
 
@@ -91,8 +100,13 @@ func (h *Handler) CreateUserLogs(ctx *gin.Context) {
 
 	filePath, err := h.repo.CreateUserLogs(payload.Date, payload.UserID)
 	if err != nil {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.AddingLogsErr, err)
-		return
+		if err.Error() != errors.DateParsingErr400 {
+			errors.HandleError(ctx, http.StatusBadRequest, errors.DateParsingErr400, nil)
+			return
+		} else {
+			errors.HandleError(ctx, http.StatusInternalServerError, errors.AddingLogsErr500, err)
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{

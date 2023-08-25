@@ -78,7 +78,7 @@ func (s *Storage) GetSegmentByName(name string) (models.Segment, error) {
 	tx := db.Where("name = ?", name).First(&segment)
 	if tx.Error != nil {
 		if tx.RowsAffected == 0 {
-			return models.Segment{}, fmt.Errorf(errors.SegmentNotFoundErr)
+			return models.Segment{}, fmt.Errorf(errors.SegmentNotFoundErr400)
 		}
 		return models.Segment{}, tx.Error
 	}
@@ -145,7 +145,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 				}
 				flag = true
 			} else {
-				return nil, fmt.Errorf(errors.UserAlreadyHasSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+				return nil, fmt.Errorf(errors.UserAlreadyHasSegmentErr400 + " " + fmt.Sprintf("%d", segmentID))
 			}
 		}
 
@@ -159,7 +159,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 				expireTime, err := time.Parse(constant.FullLayout, toCreateDto[i].DeleteTime)
 				if err != nil {
 					tx.Rollback()
-					return nil, fmt.Errorf("%s: %w", errors.TimeParsingErr, err)
+					return nil, fmt.Errorf("%s: %w", errors.DateParsingErr400, err)
 				}
 				userSegment.ExpirationDate = expireTime
 			}
@@ -202,7 +202,7 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]mo
 			return nil, err
 		} else {
 			if existingUserSegment.DeletedAt.Valid {
-				return nil, fmt.Errorf(errors.UserDoesNotHaveSegmentErr + " " + fmt.Sprintf("%d", segmentID))
+				return nil, fmt.Errorf(errors.UserDoesNotHaveSegmentErr400 + " " + fmt.Sprintf("%d", segmentID))
 			} else {
 				if err := tx.Delete(&existingUserSegment).Error; err != nil {
 					tx.Rollback()

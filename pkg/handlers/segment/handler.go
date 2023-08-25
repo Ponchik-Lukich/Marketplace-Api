@@ -6,6 +6,7 @@ import (
 	"market/pkg/errors"
 	"market/pkg/repository/segment"
 	"net/http"
+	"strings"
 )
 
 type IHandler interface {
@@ -30,7 +31,7 @@ func (h *Handler) CreateSegment(ctx *gin.Context) {
 	}
 
 	if payload.Name == "" {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptySegmentNameErr, nil)
+		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptySegmentNameErr400, nil)
 		return
 	}
 
@@ -40,8 +41,13 @@ func (h *Handler) CreateSegment(ctx *gin.Context) {
 	}
 
 	if err := h.repo.CreateSegment(payload.Name, payload.Percent); err != nil {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.CreatingSegmentErr, err)
-		return
+		if err.Error() == errors.SegmentAlreadyExist400 {
+			errors.HandleError(ctx, http.StatusBadRequest, errors.SegmentAlreadyExist400, nil)
+			return
+		} else {
+			errors.HandleError(ctx, http.StatusInternalServerError, errors.CreatingSegmentErr, err)
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -58,13 +64,18 @@ func (h *Handler) DeleteSegment(ctx *gin.Context) {
 	}
 
 	if payload.Name == "" {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptySegmentNameErr, nil)
+		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptySegmentNameErr400, nil)
 		return
 	}
 
 	if err := h.repo.DeleteSegment(payload.Name); err != nil {
-		errors.HandleError(ctx, http.StatusBadRequest, errors.DeletingSegmentErr, err)
-		return
+		if strings.Contains(err.Error(), errors.SegmentNotFoundErr400) {
+			errors.HandleError(ctx, http.StatusBadRequest, errors.SegmentNotFoundErr400, nil)
+			return
+		} else {
+			errors.HandleError(ctx, http.StatusInternalServerError, errors.DeletingSegmentErr, err)
+			return
+		}
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
