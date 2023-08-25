@@ -12,6 +12,7 @@ import (
 type IHandler interface {
 	GetUsersSegments(ctx *gin.Context)
 	EditUsersSegments(ctx *gin.Context)
+	CreateUserLogs(ctx *gin.Context)
 }
 
 type Handler struct {
@@ -67,5 +68,34 @@ func (h *Handler) EditUsersSegments(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusCreated, gin.H{
 		"message": "success",
+	})
+}
+
+func (h *Handler) CreateUserLogs(ctx *gin.Context) {
+	var payload dtos.GetLogsDtoRequest
+
+	if err := ctx.ShouldBindJSON(&payload); err != nil {
+		errors.HandleError(ctx, http.StatusInternalServerError, errors.BindingJSONErr, err)
+		return
+	}
+
+	if payload.UserID == 0 {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptyUserIDErr, nil)
+		return
+	}
+
+	if payload.Date == "" {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.EmptyDateErr, nil)
+		return
+	}
+
+	filePath, err := h.repo.CreateUserLogs(payload.Date, payload.UserID)
+	if err != nil {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.AddingLogsErr, err)
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"file_path": filePath,
 	})
 }

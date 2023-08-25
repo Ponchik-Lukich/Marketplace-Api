@@ -61,6 +61,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -115,6 +125,86 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/users/logs": {
+      "post": {
+        "summary": "Create user logs",
+        "tags": [
+          "Users"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "UserID": {
+                    "type": "integer",
+                    "description": "ID of the user"
+                  },
+                  "Date": {
+                    "type": "string",
+                    "description": "Date for the logs"
+                  }
+                },
+                "required": [
+                  "UserID",
+                  "Date"
+                ]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "file_path": {
+                      "type": "string",
+                      "description": "Path to the created log file"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -157,6 +247,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            }
           }
         }
       },
@@ -189,6 +289,16 @@
                 }
               }
             }
+          },
+          "500": {
+            "description": "internal server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InternalServerErrorResponse"
+                }
+              }
+            }
           }
         }
       }
@@ -197,6 +307,9 @@
   "components": {
     "schemas": {
       "BadRequestResponse": {
+        "type": "object"
+      },
+      "InternalServerErrorResponse": {
         "type": "object"
       }
     }

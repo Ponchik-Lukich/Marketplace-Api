@@ -12,6 +12,7 @@ var (
 	EmptySegmentNameErr       = "EMPTY_SEGMENT_NAME"
 	SegmentAlreadyExist       = "SEGMENT_ALREADY_EXIST"
 	SlugsNotFoundErr          = "SLUGS_NOT_FOUND"
+	EmptyDateErr              = "EMPTY_DATE"
 	DeleteSegmentsErr         = "DELETE_SEGMENTS_ERR"
 	CreateSegmentsErr         = "CREATE_SEGMENTS_ERR"
 	EmptyUserIDErr            = "EMPTY_USER_ID"
@@ -22,6 +23,7 @@ var (
 	GettingUserSegmentsErr    = "GETTING_USER_SEGMENTS_ERR"
 	UpdatingUserErr           = "CREATING_OR_UPDATING_USER_ERR"
 	AddingLogsErr             = "ADDING_LOGS_ERR"
+	InvalidDateErr            = "INVALID_DATE_ERR"
 )
 
 func HandleError(ctx *gin.Context, status int, errMsg string, err error) {

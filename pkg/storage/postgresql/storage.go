@@ -124,6 +124,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.
 
 	for _, segmentID := range toCreate {
 		var existingUserSegment models.UserSegment
+		flag := false
 
 		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
 			if err != gorm.ErrRecordNotFound {
@@ -136,21 +137,24 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, userID uint64) ([]models.
 					tx.Rollback()
 					return nil, err
 				}
-				continue
+				flag = true
 			} else {
 				return nil, fmt.Errorf(errors.UserAlreadyHasSegmentErr + " " + fmt.Sprintf("%d", segmentID))
 			}
 		}
 
-		userSegment := models.UserSegment{
-			UserID:    userID,
-			SegmentID: segmentID,
+		if !flag {
+			userSegment := models.UserSegment{
+				UserID:    userID,
+				SegmentID: segmentID,
+			}
+
+			if err := tx.Create(&userSegment).Error; err != nil {
+				tx.Rollback()
+				return nil, err
+			}
 		}
 
-		if err := tx.Create(&userSegment).Error; err != nil {
-			tx.Rollback()
-			return nil, err
-		}
 		timeStamp := time.Now()
 
 		log := models.Log{
@@ -196,7 +200,7 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]mo
 
 		log := models.Log{
 			UserID:    userID,
-			EventType: "добавление",
+			EventType: "удаление",
 			Segment:   "",
 			Time:      &timeStamp,
 		}
@@ -214,6 +218,20 @@ func (s *Storage) AddLogs(logs []models.Log) error {
 
 func (s *Storage) CreateUser(userID uint64) error {
 	db := s.Init()
-	user := models.User{ID: userID}
-	return db.Create(&user).Error
+	user := models.User{}
+	if err := db.First(&user, userID).Error; err == gorm.ErrRecordNotFound {
+		newUser := models.User{ID: userID}
+		return db.Create(&newUser).Error
+	}
+	return nil
+}
+
+func (s *Storage) GetUserLogs(start *time.Time, end *time.Time, userID uint64) ([]models.Log, error) {
+	var logs []models.Log
+
+	db := s.Init()
+	if err := db.Where("user_id = ? AND time > ? AND time < ?", userID, start, end).Find(&logs).Error; err != nil {
+		return nil, err
+	}
+	return logs, nil
 }

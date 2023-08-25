@@ -20,6 +20,7 @@ func SetupRouter(repositories repository.IRepositories) *gin.Engine {
 		{
 			usersG.GET("", usersH.GetUsersSegments)
 			usersG.PATCH("", usersH.EditUsersSegments)
+			usersG.POST("/logs", usersH.CreateUserLogs)
 		}
 
 		segmentsG := v1.Group("/segments")
