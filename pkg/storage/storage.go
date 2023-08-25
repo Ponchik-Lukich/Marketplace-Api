@@ -13,7 +13,7 @@ type IStorage interface {
 	Init() *gorm.DB
 	MakeMigrations() error
 
-	CreateSegment(name string) error
+	CreateSegment(name string) (uint64, error)
 	DeleteSegment(name string) error
 	GetSegmentsByUserID(userID uint64) ([]models.Segment, error)
 	GetSegmentByName(name string) (models.Segment, error)
@@ -24,6 +24,8 @@ type IStorage interface {
 	AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.CreateSegmentDto, userID uint64) ([]models.Log, error)
 	DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]models.Log, error)
 	GetUserLogs(start *time.Time, end *time.Time, userID uint64) ([]models.Log, error)
+	CountUsersNumber() (uint64, error)
+	AddSegmentsToUsersByPercent(uint64, uint64, int) error
 
 	AddLogs(logs []models.Log) error
 }

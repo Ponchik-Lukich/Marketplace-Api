@@ -34,7 +34,12 @@ func (h *Handler) CreateSegment(ctx *gin.Context) {
 		return
 	}
 
-	if err := h.repo.CreateSegment(payload.Name); err != nil {
+	if payload.Percent < 0 || payload.Percent > 100 {
+		errors.HandleError(ctx, http.StatusBadRequest, errors.InvalidPercentErr, nil)
+		return
+	}
+
+	if err := h.repo.CreateSegment(payload.Name, payload.Percent); err != nil {
 		errors.HandleError(ctx, http.StatusBadRequest, errors.CreatingSegmentErr, err)
 		return
 	}

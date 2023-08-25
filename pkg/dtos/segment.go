@@ -3,7 +3,8 @@ package dtos
 import "market/pkg/models"
 
 type SegmentDtoRequest struct {
-	Name string `json:"slug"`
+	Name    string `json:"slug"`
+	Percent int    `json:"percent,omitempty"`
 }
 
 type SegmentDtoResponse struct {

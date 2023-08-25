@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"log"
 	"market/pkg/constant"
 	"market/pkg/dtos"
 	"market/pkg/errors"
@@ -55,10 +56,13 @@ func (s *Storage) MakeMigrations() error {
 	return nil
 }
 
-func (s *Storage) CreateSegment(name string) error {
+func (s *Storage) CreateSegment(name string) (uint64, error) {
 	db := s.Init()
 	segment := models.Segment{Name: name}
-	return db.Create(&segment).Error
+	if err := db.Create(&segment).Error; err != nil {
+		return 0, err
+	}
+	return segment.ID, nil
 }
 
 func (s *Storage) DeleteSegment(name string) error {
@@ -155,7 +159,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 				expireTime, err := time.Parse(constant.FullLayout, toCreateDto[i].DeleteTime)
 				if err != nil {
 					tx.Rollback()
-					return nil, err
+					return nil, fmt.Errorf("%s: %w", errors.TimeParsingErr, err)
 				}
 				userSegment.ExpirationDate = expireTime
 			}
@@ -166,7 +170,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 			}
 		}
 
-		timeStamp := time.Now()
+		timeStamp := time.Now().Add(time.Hour * 3)
 
 		log := models.Log{
 			UserID:    userID,
@@ -207,7 +211,7 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]mo
 			}
 		}
 
-		timeStamp := time.Now()
+		timeStamp := time.Now().Add(time.Hour * 3)
 
 		log := models.Log{
 			UserID:    userID,
@@ -264,9 +268,11 @@ func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 		return nil, err
 	}
 
-	println(len(segmentsToDelete), "@@@@@@@@@@@@@@@@")
+	log.Println("Delete number of segments:", len(segmentsToDelete))
+
 	var logs []models.Log
-	timeStamp := time.Now()
+	timeStamp := time.Now().Add(time.Hour * 3)
+
 	for _, segment := range segmentsToDelete {
 		log := models.Log{
 			UserID:    segment.UserID,
@@ -282,4 +288,32 @@ func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 	}
 
 	return logs, nil
+}
+
+func (s *Storage) CountUsersNumber() (uint64, error) {
+	db := s.Init()
+
+	var count int64
+	if err := db.Table("users").Count(&count).Error; err != nil {
+		return 0, err
+	}
+
+	return uint64(count), nil
+}
+
+func (s *Storage) AddSegmentsToUsersByPercent(totalUsers uint64, segmentId uint64, percent int) error {
+	numUsersToAssign := int(float64(totalUsers) * float64(percent) / 100)
+
+	var users []models.User
+	db := s.Init()
+	db.Model(&models.User{}).Order(gorm.Expr("RAND()")).Limit(numUsersToAssign).Find(&users)
+
+	for _, user := range users {
+		userSegment := models.UserSegment{
+			UserID:    user.ID,
+			SegmentID: segmentId,
+		}
+		db.Create(&userSegment)
+	}
+	return nil
 }

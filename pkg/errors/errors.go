@@ -8,10 +8,8 @@ var (
 	CreatingSegmentErr        = "CREATING_SEGMENTS_ERR"
 	DeletingSegmentErr        = "DELETING_SEGMENTS_ERR"
 	SegmentNotFoundErr        = "SEGMENT_NOT_FOUND"
-	SegmentsNotFoundErr       = "SEGMENTS_NOT_FOUND"
 	EmptySegmentNameErr       = "EMPTY_SEGMENT_NAME"
 	SegmentAlreadyExist       = "SEGMENT_ALREADY_EXIST"
-	SlugsNotFoundErr          = "SLUGS_NOT_FOUND"
 	EmptyDateErr              = "EMPTY_DATE"
 	DeleteSegmentsErr         = "DELETE_SEGMENTS_ERR"
 	CreateSegmentsErr         = "CREATE_SEGMENTS_ERR"
@@ -25,6 +23,10 @@ var (
 	AddingLogsErr             = "ADDING_LOGS_ERR"
 	InvalidDateErr            = "INVALID_DATE_ERR"
 	TimeParsingErr            = "TIME_PARSING_ERR"
+	InvalidPercentErr         = "INVALID_PERCENT_ERR"
+	AddingPercentErr          = "ADDING_PERCENT_SEGMENTS_ERR"
+	CountUsersNumberErr       = "COUNT_USERS_NUMBER_ERR"
+	GetSegmentByNameErr       = "GET_SEGMENT_BY_NAME_ERR"
 )
 
 func HandleError(ctx *gin.Context, status int, errMsg string, err error) {

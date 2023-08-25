@@ -8,7 +8,7 @@ import (
 )
 
 type IRepository interface {
-	CreateSegment(name string) error
+	CreateSegment(name string, percent int) error
 	DeleteSegment(name string) error
 	DeleteExpiredSegments(moment *time.Time) error
 }
@@ -21,16 +21,32 @@ func NewRepository(storage storage.IStorage) IRepository {
 	return &Repository{storage}
 }
 
-func (r *Repository) CreateSegment(name string) error {
+func (r *Repository) CreateSegment(name string, percent int) error {
 	_, err := r.storage.GetSegmentByName(name)
 	if err == nil {
 		return fmt.Errorf(errors.SegmentAlreadyExist)
 	} else {
 		if err.Error() != errors.SegmentNotFoundErr {
-			return err
+			return fmt.Errorf("%s: %w", errors.GetSegmentByNameErr, err)
 		}
 	}
-	return r.storage.CreateSegment(name)
+
+	segmentId, err := r.storage.CreateSegment(name)
+	if err != nil {
+		return err
+	}
+
+	totalUsers, err := r.storage.CountUsersNumber()
+	if err != nil {
+		return fmt.Errorf("%s: %w", errors.CountUsersNumberErr, err)
+	}
+
+	err = r.storage.AddSegmentsToUsersByPercent(totalUsers, segmentId, percent)
+	if err != nil {
+		return fmt.Errorf("%s: %w", errors.AddingPercentErr, err)
+	}
+
+	return nil
 }
 
 func (r *Repository) DeleteSegment(name string) error {
