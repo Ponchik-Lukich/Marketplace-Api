@@ -119,9 +119,11 @@ func (s *Storage) GetIDsAndMissingNames(names []string) ([]uint64, []string, err
 }
 
 func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.CreateSegmentDto, userID uint64) ([]models.Log, errors.CustomError) {
-	db := s.Init()
 	var logs []models.Log
+	var existingNames []string
+	flag := false
 
+	db := s.Init()
 	tx := db.Begin()
 	if tx.Error != nil {
 		return nil, errors.Transaction{Err: tx.Error.Error()}
@@ -129,7 +131,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 
 	for i, segmentID := range toCreate {
 		var existingUserSegment models.UserSegment
-		flag := false
+		stop := false
 
 		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
 			if err != gorm.ErrRecordNotFound {
@@ -142,13 +144,14 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 					tx.Rollback()
 					return nil, errors.AddSegments{Err: err.Error()}
 				}
-				flag = true
+				stop = true
 			} else {
-				return nil, errors.UserAlreadyHasSegment{Err: toCreateDto[i].Name}
+				flag = true
+				existingNames = append(existingNames, toCreateDto[i].Name)
 			}
 		}
 
-		if !flag {
+		if !stop {
 			userSegment := models.UserSegment{
 				UserID:    userID,
 				SegmentID: segmentID,
@@ -180,6 +183,10 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 
 		logs = append(logs, addLog)
 	}
+	if flag {
+		tx.Rollback()
+		return nil, errors.UserAlreadyHasSegment{Err: fmt.Sprintf("Existing Segments: %v", existingNames)}
+	}
 	if err := tx.Commit().Error; err != nil {
 		return nil, errors.Transaction{Err: tx.Error.Error()}
 	}
@@ -188,10 +195,11 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 }
 
 func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, toDeleteDto []string, userID uint64) ([]models.Log, errors.CustomError) {
-	db := s.Init()
-
 	var logs []models.Log
+	var nonExistingNames []string
+	flag := false
 
+	db := s.Init()
 	tx := db.Begin()
 	if tx.Error != nil {
 		return nil, errors.Transaction{Err: tx.Error.Error()}
@@ -201,7 +209,8 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, toDeleteDto []string
 		var existingUserSegment models.UserSegment
 
 		if err := tx.Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
-			return nil, errors.UserDoesNotHaveSegment{Err: toDeleteDto[i]}
+			flag = true
+			nonExistingNames = append(nonExistingNames, toDeleteDto[i])
 		} else {
 			if err := tx.Delete(&existingUserSegment).Error; err != nil {
 				tx.Rollback()
@@ -219,6 +228,11 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, toDeleteDto []string
 		}
 
 		logs = append(logs, addLog)
+	}
+
+	if flag {
+		tx.Rollback()
+		return nil, errors.UserDoesNotHaveSegment{Err: fmt.Sprintf("Non existing Segments: %v", nonExistingNames)}
 	}
 
 	if err := tx.Commit().Error; err != nil {

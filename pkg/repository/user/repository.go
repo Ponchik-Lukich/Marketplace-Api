@@ -44,7 +44,7 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 
 	missingNames := append(toCreateMissingNames, toDeleteMissingNames...)
 	if len(missingNames) > 0 {
-		return errors.MissingNames{Err: fmt.Sprintf("%v", missingNames)}
+		return errors.MissingNames{Err: fmt.Sprintf("Missing names: %v", missingNames)}
 	}
 
 	if err := r.storage.CreateUser(userID); err != nil {
