@@ -58,10 +58,27 @@ func (s *Storage) MakeMigrations() error {
 
 func (s *Storage) CreateSegment(name string) (uint64, error) {
 	db := s.Init()
-	segment := models.Segment{Name: name}
-	if err := db.Create(&segment).Error; err != nil {
-		return 0, err
+	var segment models.Segment
+
+	if err := db.Unscoped().Where("name = ?", name).First(&segment).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			segment = models.Segment{Name: name}
+			if err := db.Create(&segment).Error; err != nil {
+				return 0, err
+			}
+			return segment.ID, nil
+		} else {
+			return 0, err
+		}
 	}
+
+	if segment.DeletedAt.Valid {
+		println("segment is deleted")
+		if err := db.Unscoped().Model(&segment).Update("deleted_at", nil).Error; err != nil {
+			return 0, err
+		}
+	}
+
 	return segment.ID, nil
 }
 
