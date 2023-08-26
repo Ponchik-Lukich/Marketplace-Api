@@ -114,7 +114,7 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 	}
 	if flag {
 		tx.Rollback()
-		return nil, errors.UserAlreadyHasSegment{Err: fmt.Sprintf("Existing Segments: %v", existingNames)}
+		return nil, errors.UserAlreadyHasSegment{Err: fmt.Sprintf("Ids: %v", existingNames)}
 	}
 	if err := tx.Commit().Error; err != nil {
 		return nil, errors.Transaction{Err: tx.Error.Error()}
@@ -161,7 +161,7 @@ func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, toDeleteDto []string
 
 	if flag {
 		tx.Rollback()
-		return nil, errors.UserDoesNotHaveSegment{Err: fmt.Sprintf("Non existing Segments: %v", nonExistingNames)}
+		return nil, errors.UserDoesNotHaveSegment{Err: fmt.Sprintf("Ids: %v", nonExistingNames)}
 	}
 
 	if err := tx.Commit().Error; err != nil {
