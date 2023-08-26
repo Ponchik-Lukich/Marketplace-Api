@@ -16,11 +16,11 @@ type Repositories struct {
 }
 
 func (r *Repositories) GetUsersRepo() user.IRepository {
-	return user.NewRepository(r.storage)
+	return user.NewRepository(r.storage.GetUserStorage(), r.storage.GetGeneralStorage())
 }
 
 func (r *Repositories) GetSegmentsRepo() segment.IRepository {
-	return segment.NewRepository(r.storage)
+	return segment.NewRepository(r.storage.GetSegmentStorage(), r.storage.GetGeneralStorage())
 }
 
 func NewRepositories(storage storage.IStorage) IRepositories {

@@ -7,7 +7,8 @@ import (
 	"market/pkg/dtos"
 	"market/pkg/errors"
 	"market/pkg/models"
-	"market/pkg/storage"
+	"market/pkg/storage/general"
+	"market/pkg/storage/user"
 	"os"
 	"strconv"
 	"time"
@@ -20,11 +21,12 @@ type IRepository interface {
 }
 
 type Repository struct {
-	storage storage.IStorage
+	userStorage user.IStorage
+	genStorage  general.IStorage
 }
 
-func NewRepository(storage storage.IStorage) IRepository {
-	return &Repository{storage}
+func NewRepository(userStorage user.IStorage, genStorage general.IStorage) IRepository {
+	return &Repository{userStorage, genStorage}
 }
 
 func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDelete []string, userID uint64) errors.CustomError {
@@ -33,11 +35,11 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 		toCreate[i] = segment.Name
 	}
 
-	toCreateIds, toCreateMissingNames, err := r.storage.GetIDsAndMissingNames(toCreate)
+	toCreateIds, toCreateMissingNames, err := r.userStorage.GetIDsAndMissingNames(toCreate)
 	if err != nil {
 		return errors.GetMissingNames{Err: fmt.Sprintf("%v", toCreateMissingNames)}
 	}
-	toDeleteIds, toDeleteMissingNames, err := r.storage.GetIDsAndMissingNames(toDelete)
+	toDeleteIds, toDeleteMissingNames, err := r.userStorage.GetIDsAndMissingNames(toDelete)
 	if err != nil {
 		return errors.GetMissingNames{Err: fmt.Sprintf("%v", toDeleteMissingNames)}
 	}
@@ -47,16 +49,16 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 		return errors.MissingNames{Err: fmt.Sprintf("Missing names: %v", missingNames)}
 	}
 
-	if err := r.storage.CreateUser(userID); err != nil {
+	if err := r.userStorage.CreateUser(userID); err != nil {
 		return errors.UpdateUser{Err: err.Error()}
 	}
 
-	createLogs, customErr := r.storage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
+	createLogs, customErr := r.userStorage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
 	if customErr != nil {
 		return customErr
 	}
 
-	deleteLogs, customErr := r.storage.DeleteSegmentsFromUser(toDeleteIds, toDelete, userID)
+	deleteLogs, customErr := r.userStorage.DeleteSegmentsFromUser(toDeleteIds, toDelete, userID)
 	if customErr != nil {
 		return customErr
 	}
@@ -81,7 +83,7 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 		logs = append(logs, deleteLogs...)
 	}
 
-	err = r.storage.AddLogs(logs)
+	err = r.genStorage.AddLogs(logs)
 	if err != nil {
 		return errors.AddLogs{Err: err.Error()}
 	}
@@ -90,12 +92,12 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 }
 
 func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, errors.CustomError) {
-	segments, err := r.storage.GetSegmentsByUserID(userID)
+	segments, err := r.userStorage.GetUserSegmentsByID(userID)
 	if err != nil {
 		return nil, errors.GetSegmentByName{}
 	}
 
-	err = r.storage.CreateUser(userID)
+	err = r.userStorage.CreateUser(userID)
 	if err != nil {
 		return nil, errors.UpdateUser{Err: err.Error()}
 	}
@@ -118,7 +120,7 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, errors.
 	startTime := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
 	endTime := startTime.AddDate(0, 1, 0).Add(-time.Nanosecond)
 
-	logs, err := r.storage.GetUserLogs(&startTime, &endTime, userID)
+	logs, err := r.userStorage.GetUserLogs(&startTime, &endTime, userID)
 	if err != nil {
 		return "", errors.GetLogs{Err: err.Error()}
 	}

@@ -2,7 +2,8 @@ package segment
 
 import (
 	"market/pkg/errors"
-	"market/pkg/storage"
+	"market/pkg/storage/general"
+	"market/pkg/storage/segment"
 	"time"
 )
 
@@ -13,15 +14,16 @@ type IRepository interface {
 }
 
 type Repository struct {
-	storage storage.IStorage
+	segStorage segment.IStorage
+	genStorage general.IStorage
 }
 
-func NewRepository(storage storage.IStorage) IRepository {
-	return &Repository{storage}
+func NewRepository(segStorage segment.IStorage, genStorage general.IStorage) IRepository {
+	return &Repository{segStorage, genStorage}
 }
 
 func (r *Repository) CreateSegment(name string, percent int) errors.CustomError {
-	_, err := r.storage.GetSegmentByName(name)
+	_, err := r.segStorage.GetSegmentByName(name)
 	if err == nil {
 		return errors.SegmentAlreadyExist{}
 	} else {
@@ -30,30 +32,37 @@ func (r *Repository) CreateSegment(name string, percent int) errors.CustomError 
 		}
 	}
 
-	segmentId, err := r.storage.CreateSegment(name)
+	segmentId, err := r.segStorage.CreateSegment(name)
 	if err != nil {
 		return errors.CreateSegment{Err: err.Error()}
 	}
 
-	totalUsers, err := r.storage.CountUsersNumber()
+	totalUsers, err := r.genStorage.CountUsersNumber()
 	if err != nil {
 		return errors.CountUsersNumber{Err: err.Error()}
 	}
 
-	err = r.storage.AddSegmentsToUsersByPercent(totalUsers, segmentId, percent)
+	logs, err := r.segStorage.AddSegmentsToUsersByPercent(totalUsers, segmentId, percent)
 	if err != nil {
 		return errors.AddPercent{Err: err.Error()}
+	}
+
+	if len(logs) > 0 {
+		err = r.genStorage.AddLogs(logs)
+		if err != nil {
+			return errors.AddLogs{Err: err.Error()}
+		}
 	}
 
 	return nil
 }
 
 func (r *Repository) DeleteSegment(name string) errors.CustomError {
-	_, err := r.storage.GetSegmentByName(name)
+	_, err := r.segStorage.GetSegmentByName(name)
 	if err != nil {
 		return errors.GetSegmentByName{Err: err.Error()}
 	}
-	err = r.storage.DeleteSegment(name)
+	err = r.segStorage.DeleteSegment(name)
 	if err != nil {
 		return errors.DeleteSegments{Err: err.Error()}
 	}
@@ -61,13 +70,13 @@ func (r *Repository) DeleteSegment(name string) errors.CustomError {
 }
 
 func (r *Repository) DeleteExpiredSegments(moment *time.Time) errors.CustomError {
-	logs, err := r.storage.DeleteExpiredSegments(moment)
+	logs, err := r.segStorage.DeleteExpiredSegments(moment)
 	if err != nil {
 		return errors.DeleteSegments{Err: err.Error()}
 	}
 
 	if len(logs) > 0 {
-		err = r.storage.AddLogs(logs)
+		err = r.genStorage.AddLogs(logs)
 		if err != nil {
 			return errors.AddLogs{Err: err.Error()}
 		}
