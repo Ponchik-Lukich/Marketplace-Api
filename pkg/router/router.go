@@ -28,10 +28,9 @@ func SetupRouter(repositories repository.IRepositories) *gin.Engine {
 			segmentsG.POST("", segmentsH.CreateSegment)
 			segmentsG.DELETE("", segmentsH.DeleteSegment)
 		}
-
-		v1.StaticFile("/swagger/api.json", "./api/api.json")
-		v1.Static("/swagger-ui", "./static/swagger-ui/dist")
 	}
+	router.StaticFile("/swagger/api.json", "./api/api.json")
+	router.Static("/swagger-ui", "./static/swagger-ui/dist")
 
 	return router
 }
