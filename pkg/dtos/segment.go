@@ -13,7 +13,7 @@ type SegmentDtoResponse struct {
 }
 
 type CreateSegmentDto struct {
-	Name       string `json:"name"`
+	Name       string `json:"slug"`
 	DeleteTime string `json:"ttl,omitempty"`
 }
 

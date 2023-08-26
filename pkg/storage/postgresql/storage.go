@@ -118,14 +118,13 @@ func (s *Storage) GetIDsAndMissingNames(names []string) ([]uint64, []string, err
 	return existingIds, missingNames, nil
 }
 
-func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.CreateSegmentDto, userID uint64) ([]models.Log, error) {
+func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.CreateSegmentDto, userID uint64) ([]models.Log, errors.CustomError) {
 	db := s.Init()
-
 	var logs []models.Log
 
 	tx := db.Begin()
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, errors.Transaction{Err: tx.Error.Error()}
 	}
 
 	for i, segmentID := range toCreate {
@@ -135,17 +134,17 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
 			if err != gorm.ErrRecordNotFound {
 				tx.Rollback()
-				return nil, err
+				return nil, errors.AddSegments{Err: err.Error()}
 			}
 		} else {
 			if existingUserSegment.DeletedAt.Valid {
 				if err := tx.Unscoped().Model(&existingUserSegment).Update("deleted_at", nil).Error; err != nil {
 					tx.Rollback()
-					return nil, err
+					return nil, errors.AddSegments{Err: err.Error()}
 				}
 				flag = true
 			} else {
-				return nil, fmt.Errorf(errors.UserAlreadyHasSegmentErr400 + " " + fmt.Sprintf("%d", segmentID))
+				return nil, errors.UserAlreadyHasSegment{Err: toCreateDto[i].Name}
 			}
 		}
 
@@ -159,71 +158,74 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 				expireTime, err := time.Parse(constant.FullLayout, toCreateDto[i].DeleteTime)
 				if err != nil {
 					tx.Rollback()
-					return nil, fmt.Errorf("%s: %w", errors.DateParsingErr400, err)
+					return nil, errors.DateParsing{Err: err.Error()}
 				}
 				userSegment.ExpirationDate = expireTime
 			}
 
 			if err := tx.Create(&userSegment).Error; err != nil {
 				tx.Rollback()
-				return nil, err
+				return nil, errors.CreateSegment{Err: err.Error()}
 			}
 		}
 
 		timeStamp := time.Now().Add(time.Hour * 3)
 
-		log := models.Log{
+		addLog := models.Log{
 			UserID:    userID,
 			EventType: "добавление",
 			Segment:   "",
 			Time:      &timeStamp,
 		}
 
-		logs = append(logs, log)
+		logs = append(logs, addLog)
+	}
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Transaction{Err: tx.Error.Error()}
 	}
 
-	return logs, tx.Commit().Error
+	return logs, nil
 }
 
-func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, userID uint64) ([]models.Log, error) {
+func (s *Storage) DeleteSegmentsFromUser(toDelete []uint64, toDeleteDto []string, userID uint64) ([]models.Log, errors.CustomError) {
 	db := s.Init()
 
 	var logs []models.Log
 
 	tx := db.Begin()
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, errors.Transaction{Err: tx.Error.Error()}
 	}
 
-	for _, segmentID := range toDelete {
+	for i, segmentID := range toDelete {
 		var existingUserSegment models.UserSegment
 
-		if err := tx.Unscoped().Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
-			return nil, err
+		if err := tx.Where("user_id = ? AND segment_id = ?", userID, segmentID).First(&existingUserSegment).Error; err != nil {
+			return nil, errors.UserDoesNotHaveSegment{Err: toDeleteDto[i]}
 		} else {
-			if existingUserSegment.DeletedAt.Valid {
-				return nil, fmt.Errorf(errors.UserDoesNotHaveSegmentErr400 + " " + fmt.Sprintf("%d", segmentID))
-			} else {
-				if err := tx.Delete(&existingUserSegment).Error; err != nil {
-					tx.Rollback()
-					return nil, err
-				}
+			if err := tx.Delete(&existingUserSegment).Error; err != nil {
+				tx.Rollback()
+				return nil, errors.DeleteSegments{Err: err.Error()}
 			}
 		}
 
 		timeStamp := time.Now().Add(time.Hour * 3)
 
-		log := models.Log{
+		addLog := models.Log{
 			UserID:    userID,
 			EventType: "удаление",
 			Segment:   "",
 			Time:      &timeStamp,
 		}
 
-		logs = append(logs, log)
+		logs = append(logs, addLog)
 	}
 
-	return logs, tx.Commit().Error
+	if err := tx.Commit().Error; err != nil {
+		return nil, errors.Transaction{Err: err.Error()}
+	}
+
+	return logs, nil
 }
 
 func (s *Storage) AddLogs(logs []models.Log) error {

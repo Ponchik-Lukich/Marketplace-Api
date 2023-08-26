@@ -14,9 +14,9 @@ import (
 )
 
 type IRepository interface {
-	EditUsersSegments(toCreate []dtos.CreateSegmentDto, toDelete []string, userID uint64) error
-	GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, error)
-	CreateUserLogs(date string, userID uint64) (string, error)
+	EditUsersSegments(toCreate []dtos.CreateSegmentDto, toDelete []string, userID uint64) errors.CustomError
+	GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, errors.CustomError)
+	CreateUserLogs(date string, userID uint64) (string, errors.CustomError)
 }
 
 type Repository struct {
@@ -27,7 +27,7 @@ func NewRepository(storage storage.IStorage) IRepository {
 	return &Repository{storage}
 }
 
-func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDelete []string, userID uint64) error {
+func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDelete []string, userID uint64) errors.CustomError {
 	toCreate := make([]string, len(toCreateDto))
 	for i, segment := range toCreateDto {
 		toCreate[i] = segment.Name
@@ -35,30 +35,30 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 
 	toCreateIds, toCreateMissingNames, err := r.storage.GetIDsAndMissingNames(toCreate)
 	if err != nil {
-		return err
+		return errors.GetMissingNames{Err: fmt.Sprintf("%v", toCreateMissingNames)}
 	}
 	toDeleteIds, toDeleteMissingNames, err := r.storage.GetIDsAndMissingNames(toDelete)
 	if err != nil {
-		return err
+		return errors.GetMissingNames{Err: fmt.Sprintf("%v", toDeleteMissingNames)}
 	}
 
 	missingNames := append(toCreateMissingNames, toDeleteMissingNames...)
 	if len(missingNames) > 0 {
-		return fmt.Errorf("%s: %v", errors.MissingNamesErr400, missingNames)
+		return errors.MissingNames{Err: fmt.Sprintf("%v", missingNames)}
 	}
 
 	if err := r.storage.CreateUser(userID); err != nil {
-		return fmt.Errorf("%s: %v", errors.UpdatingUserErr500, err)
+		return errors.UpdateUser{Err: err.Error()}
 	}
 
-	createLogs, err := r.storage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
-	if err != nil {
-		return err
+	createLogs, customErr := r.storage.AddSegmentsToUser(toCreateIds, toCreateDto, userID)
+	if customErr != nil {
+		return customErr
 	}
 
-	deleteLogs, err := r.storage.DeleteSegmentsFromUser(toDeleteIds, userID)
-	if err != nil {
-		return fmt.Errorf("%s: %v", errors.DeleteSegmentsErr500, err)
+	deleteLogs, customErr := r.storage.DeleteSegmentsFromUser(toDeleteIds, toDelete, userID)
+	if customErr != nil {
+		return customErr
 	}
 
 	if len(createLogs) == 0 && len(deleteLogs) == 0 {
@@ -83,21 +83,21 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 
 	err = r.storage.AddLogs(logs)
 	if err != nil {
-		return fmt.Errorf("%s: %v", errors.AddingLogsErr500, err)
+		return errors.AddLogs{Err: err.Error()}
 	}
 
 	return nil
 }
 
-func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, error) {
+func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse, errors.CustomError) {
 	segments, err := r.storage.GetSegmentsByUserID(userID)
 	if err != nil {
-		return nil, err
+		return nil, errors.GetSegmentByName{}
 	}
 
 	err = r.storage.CreateUser(userID)
 	if err != nil {
-		return nil, fmt.Errorf("%s: %v", errors.UpdatingUserErr500, err)
+		return nil, errors.UpdateUser{Err: err.Error()}
 	}
 
 	var segmentsDto []dtos.SegmentDtoResponse
@@ -108,11 +108,11 @@ func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse,
 	return segmentsDto, nil
 }
 
-func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) {
+func (r *Repository) CreateUserLogs(date string, userID uint64) (string, errors.CustomError) {
 
 	t, err := time.Parse(constant.Layout, date)
 	if err != nil {
-		return "", fmt.Errorf(errors.DateParsingErr400)
+		return "", errors.DateParsing{Err: err.Error()}
 	}
 
 	startTime := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location())
@@ -120,12 +120,12 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) 
 
 	logs, err := r.storage.GetUserLogs(&startTime, &endTime, userID)
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", errors.GettingLogsErr500, err)
+		return "", errors.GetLogs{Err: err.Error()}
 	}
 
 	file, err := os.Create(constant.DockerPath + strconv.FormatUint(userID, 10) + "_" + date + ".csv")
 	if err != nil {
-		return "", fmt.Errorf("%s: %v", errors.CreatingFileErr500, err)
+		return "", errors.CreateFile{Err: err.Error()}
 	}
 	defer file.Close()
 
@@ -141,7 +141,7 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, error) 
 		}
 		err := writer.Write(record)
 		if err != nil {
-			return "", fmt.Errorf("%s: %v", errors.WritingFileErr500, err)
+			return "", errors.WriteFile{Err: err.Error()}
 		}
 	}
 

@@ -90,7 +90,7 @@
                     "items": {
                       "type": "object",
                       "properties": {
-                        "name": {
+                        "slug": {
                           "type": "string"
                         },
                         "ttl": {
@@ -99,7 +99,7 @@
                         }
                       },
                       "required": [
-                        "name"
+                        "slug"
                       ]
                     }
                   },

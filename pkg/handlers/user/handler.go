@@ -7,7 +7,6 @@ import (
 	"market/pkg/repository/user"
 	"net/http"
 	"strconv"
-	"strings"
 )
 
 type IHandler interface {
@@ -37,9 +36,9 @@ func (h *Handler) GetUsersSegments(ctx *gin.Context) {
 		return
 	}
 
-	segments, err := h.repo.GetUsersSegments(userID)
-	if err != nil {
-		errors.HandleError(ctx, http.StatusInternalServerError, errors.GettingUserSegmentsErr, err)
+	segments, customErr := h.repo.GetUsersSegments(userID)
+	if customErr != nil {
+		errors.HandleCustomError(ctx, customErr.Code(), customErr)
 		return
 	}
 
@@ -63,16 +62,8 @@ func (h *Handler) EditUsersSegments(ctx *gin.Context) {
 	}
 
 	if err := h.repo.EditUsersSegments(payload.ToCreate, payload.ToDelete, payload.UserID); err != nil {
-		if strings.Contains(err.Error(), errors.MissingNamesErr400) ||
-			strings.Contains(err.Error(), errors.UserAlreadyHasSegmentErr400) ||
-			strings.Contains(err.Error(), errors.DateParsingErr400) ||
-			strings.Contains(err.Error(), errors.UserDoesNotHaveSegmentErr400) {
-			errors.HandleError(ctx, http.StatusBadRequest, errors.EditingUserErr, err)
-			return
-		} else {
-			errors.HandleError(ctx, http.StatusInternalServerError, errors.EditingUserErr, err)
-			return
-		}
+		errors.HandleCustomError(ctx, err.Code(), err)
+		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
@@ -100,13 +91,8 @@ func (h *Handler) CreateUserLogs(ctx *gin.Context) {
 
 	filePath, err := h.repo.CreateUserLogs(payload.Date, payload.UserID)
 	if err != nil {
-		if err.Error() != errors.DateParsingErr400 {
-			errors.HandleError(ctx, http.StatusBadRequest, errors.DateParsingErr400, nil)
-			return
-		} else {
-			errors.HandleError(ctx, http.StatusInternalServerError, errors.AddingLogsErr500, err)
-			return
-		}
+		errors.HandleCustomError(ctx, err.Code(), err)
+		return
 	}
 
 	ctx.JSON(http.StatusCreated, gin.H{
