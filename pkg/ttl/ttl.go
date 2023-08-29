@@ -2,7 +2,7 @@ package ttl
 
 import (
 	"log"
-	"market/pkg/repository/segment"
+	"market/pkg/service/segment"
 	"time"
 )
 

@@ -3,12 +3,12 @@ package router
 import (
 	"market/pkg/handlers/segment"
 	"market/pkg/handlers/user"
-	"market/pkg/repository"
+	"market/pkg/service"
 
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRouter(repositories repository.IRepositories) *gin.Engine {
+func SetupRouter(repositories service.IRepositories) *gin.Engine {
 	router := gin.Default()
 
 	usersH := user.NewHandler(repositories.GetUsersRepo())

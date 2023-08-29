@@ -6,8 +6,8 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/file"
 	"log"
-	"market/pkg/repository"
 	"market/pkg/router"
+	"market/pkg/service"
 	"market/pkg/storage"
 	"market/pkg/ttl"
 	"net/http"
@@ -60,7 +60,7 @@ func main() {
 		log.Fatalf("failed to make migrations: %v", err)
 	}
 
-	repos := repository.NewRepositories(db)
+	repos := service.NewRepositories(db)
 	r := router.SetupRouter(repos)
 
 	go ttl.TtlWorker(repos.GetSegmentsRepo())
