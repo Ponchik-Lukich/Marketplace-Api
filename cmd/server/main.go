@@ -6,8 +6,8 @@ import (
 	"github.com/heetch/confita"
 	"github.com/heetch/confita/backend/file"
 	"log"
+	"market/pkg/repository"
 	"market/pkg/router"
-	"market/pkg/service"
 	"market/pkg/storage"
 	"market/pkg/ttl"
 	"net/http"
@@ -60,10 +60,10 @@ func main() {
 		log.Fatalf("failed to make migrations: %v", err)
 	}
 
-	repos := service.NewRepositories(db)
+	repos := repository.NewRepositories(db)
 	r := router.SetupRouter(repos)
 
-	go ttl.TtlWorker(repos.GetSegmentsRepo())
+	go ttl.WorkerTtl(repos.GetSegmentsRepo())
 
 	err = http.ListenAndServe(fmt.Sprintf(":%s", cfg.Port), r)
 	if err != nil {

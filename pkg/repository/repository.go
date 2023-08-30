@@ -1,8 +1,8 @@
-package service
+package repository
 
 import (
-	"market/pkg/service/segment"
-	"market/pkg/service/user"
+	"market/pkg/repository/segment"
+	"market/pkg/repository/user"
 	"market/pkg/storage"
 )
 

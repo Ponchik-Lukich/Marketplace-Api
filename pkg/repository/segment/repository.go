@@ -62,10 +62,18 @@ func (r *Repository) DeleteSegment(name string) errors.CustomError {
 	if err != nil {
 		return errors.GetSegmentByName{Err: err.Error()}
 	}
-	err = r.segStorage.DeleteSegment(name)
+	logs, err := r.segStorage.DeleteSegment(name)
 	if err != nil {
 		return errors.DeleteSegments{Err: err.Error()}
 	}
+
+	if len(logs) > 0 {
+		err = r.genStorage.AddLogs(logs)
+		if err != nil {
+			return errors.AddLogs{Err: err.Error()}
+		}
+	}
+
 	return nil
 }
 

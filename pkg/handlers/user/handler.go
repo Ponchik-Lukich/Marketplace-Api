@@ -4,7 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"market/pkg/dtos"
 	"market/pkg/errors"
-	"market/pkg/service/user"
+	"market/pkg/repository/user"
 	"net/http"
 	"strconv"
 )

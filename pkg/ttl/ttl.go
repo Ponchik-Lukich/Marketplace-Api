@@ -2,7 +2,7 @@ package ttl
 
 import (
 	"log"
-	"market/pkg/service/segment"
+	"market/pkg/repository/segment"
 	"time"
 )
 
@@ -13,7 +13,7 @@ func DeleteExpiredSegments(repo segment.IRepository, moment time.Time) {
 	}
 }
 
-func TtlWorker(repo segment.IRepository) {
+func WorkerTtl(repo segment.IRepository) {
 	for {
 		now := time.Now().Add(time.Hour * 3)
 		next := now.Add(time.Minute).Truncate(time.Minute)

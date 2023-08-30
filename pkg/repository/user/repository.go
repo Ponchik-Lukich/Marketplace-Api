@@ -102,7 +102,7 @@ func (r *Repository) GetUsersSegments(userID uint64) ([]dtos.SegmentDtoResponse,
 		return nil, errors.UpdateUser{Err: err.Error()}
 	}
 
-	var segmentsDto []dtos.SegmentDtoResponse
+	segmentsDto := make([]dtos.SegmentDtoResponse, 0)
 	for _, segment := range segments {
 		segmentsDto = append(segmentsDto, dtos.ToSegmentDto(&segment))
 	}
@@ -123,6 +123,10 @@ func (r *Repository) CreateUserLogs(date string, userID uint64) (string, errors.
 	logs, err := r.userStorage.GetUserLogs(&startTime, &endTime, userID)
 	if err != nil {
 		return "", errors.GetLogs{Err: err.Error()}
+	}
+
+	if err := r.userStorage.CreateUser(userID); err != nil {
+		return "", errors.UpdateUser{Err: err.Error()}
 	}
 
 	file, err := os.Create(constant.DockerPath + strconv.FormatUint(userID, 10) + "_" + date + ".csv")

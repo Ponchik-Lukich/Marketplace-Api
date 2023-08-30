@@ -69,7 +69,18 @@ func (s *Storage) AddSegmentsToUser(toCreate []uint64, toCreateDto []dtos.Create
 			}
 		} else {
 			if existingUserSegment.DeletedAt.Valid {
-				if err := tx.Unscoped().Model(&existingUserSegment).Update("deleted_at", nil).Error; err != nil {
+				updateMap := map[string]interface{}{
+					"deleted_at": nil,
+				}
+				if toCreateDto[i].DeleteTime != "" {
+					expireTime, err := time.Parse(constant.FullLayout, toCreateDto[i].DeleteTime)
+					if err != nil {
+						tx.Rollback()
+						return nil, errors.DateParsing{Err: err.Error()}
+					}
+					updateMap["expiration_date"] = expireTime
+				}
+				if err := tx.Unscoped().Model(&existingUserSegment).Updates(updateMap).Error; err != nil {
 					tx.Rollback()
 					return nil, errors.AddSegments{Err: err.Error()}
 				}

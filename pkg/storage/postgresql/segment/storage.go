@@ -38,7 +38,6 @@ func (s *Storage) CreateSegment(name string) (uint64, error) {
 	}
 
 	if segment.DeletedAt.Valid {
-		println("segment is deleted")
 		if err := db.Unscoped().Model(&segment).Update("deleted_at", nil).Error; err != nil {
 			return 0, err
 		}
@@ -47,10 +46,40 @@ func (s *Storage) CreateSegment(name string) (uint64, error) {
 	return segment.ID, nil
 }
 
-func (s *Storage) DeleteSegment(name string) error {
+func (s *Storage) DeleteSegment(name string) ([]models.Log, error) {
 	db := s.Init()
-	segment := models.Segment{Name: name}
-	return db.Where("name = ?", name).Delete(&segment).Error
+	var segment models.Segment
+	var userSegments []models.UserSegment
+	var logs []models.Log
+
+	if err := db.Where("name = ?", name).First(&segment).Error; err != nil {
+		return nil, err
+	}
+
+	if err := db.Where("segment_id = ?", segment.ID).Find(&userSegments).Error; err != nil {
+		return nil, err
+	}
+
+	for _, userSegment := range userSegments {
+		timeStamp := time.Now().Add(time.Hour * 3)
+		addLog := models.Log{
+			UserID:    userSegment.UserID,
+			EventType: "удаление",
+			Segment:   segment.Name,
+			Time:      &timeStamp,
+		}
+		logs = append(logs, addLog)
+	}
+
+	if err := db.Model(&segment).Association("Users").Clear(); err != nil {
+		return nil, err
+	}
+
+	if err := db.Delete(&segment).Error; err != nil {
+		return nil, err
+	}
+
+	return logs, nil
 }
 
 func (s *Storage) GetSegmentByName(name string) (models.Segment, error) {
