@@ -70,14 +70,14 @@ func (r *Repository) EditUsersSegments(toCreateDto []dtos.CreateSegmentDto, toDe
 	logs := make([]models.Log, 0, len(createLogs)+len(deleteLogs))
 
 	if len(createLogs) > 0 {
-		for i, _ := range createLogs {
+		for i := range createLogs {
 			createLogs[i].Segment = toCreate[i]
 		}
 		logs = append(logs, createLogs...)
 	}
 
 	if len(deleteLogs) > 0 {
-		for i, _ := range deleteLogs {
+		for i := range deleteLogs {
 			deleteLogs[i].Segment = toDelete[i]
 		}
 		logs = append(logs, deleteLogs...)
