@@ -60,7 +60,10 @@ func (r *Repository) CreateSegment(name string, percent int) errors.CustomError 
 func (r *Repository) DeleteSegment(name string) errors.CustomError {
 	_, err := r.segStorage.GetSegmentByName(name)
 	if err != nil {
-		return errors.GetSegmentByName{Err: err.Error()}
+		if err.Error() != errors.SegmentNotFoundErr400 {
+			return errors.GetSegmentByName{Err: err.Error()}
+		}
+		return errors.SegmentNotFound{}
 	}
 	logs, err := r.segStorage.DeleteSegment(name)
 	if err != nil {

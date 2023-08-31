@@ -16,10 +16,9 @@ func DeleteExpiredSegments(repo segment.IRepository, moment time.Time) {
 func WorkerTtl(repo segment.IRepository) {
 	for {
 		now := time.Now().Add(time.Hour * 3)
-		next := now.Add(time.Minute).Truncate(time.Minute)
+		next := now.Add(time.Minute / 2).Truncate(time.Minute / 2)
 		time.Sleep(next.Sub(now))
 
-		log.Println("Deleting expired segments")
 		DeleteExpiredSegments(repo, now)
 	}
 }

@@ -107,7 +107,7 @@ func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 	if err := db.Table("user_segments").
 		Select("user_segments.user_id, user_segments.segment_id, segments.name as segment_name").
 		Joins("JOIN segments ON user_segments.segment_id = segments.id").
-		Where("user_segments.expiration_date < ?", moment).
+		Where("user_segments.expiration_date <= ?", moment).
 		Where("user_segments.deleted_at IS NULL").
 		Scan(&segmentsToDelete).Error; err != nil {
 		return nil, err
@@ -128,7 +128,7 @@ func (s *Storage) DeleteExpiredSegments(moment *time.Time) ([]models.Log, error)
 		logs = append(logs, addLog)
 	}
 
-	if err := db.Where("expiration_date < ?", moment).Delete(&models.UserSegment{}).Error; err != nil {
+	if err := db.Where("expiration_date <= ?", moment).Delete(&models.UserSegment{}).Error; err != nil {
 		return nil, err
 	}
 
