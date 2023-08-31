@@ -55,9 +55,11 @@ func main() {
 		log.Fatalf("failed to initialize storage: %v", err)
 	}
 
-	err = db.MakeMigrations()
-	if err != nil {
-		log.Fatalf("failed to make migrations: %v", err)
+	if cfg.Migrations {
+		err = db.MakeMigrations()
+		if err != nil {
+			log.Fatalf("failed to make migrations: %v", err)
+		}
 	}
 
 	repos := repository.NewRepositories(db)

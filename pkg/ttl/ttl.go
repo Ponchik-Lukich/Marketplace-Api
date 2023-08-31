@@ -9,7 +9,7 @@ import (
 func DeleteExpiredSegments(repo segment.IRepository, moment time.Time) {
 	err := repo.DeleteExpiredSegments(&moment)
 	if err != nil {
-		log.Fatalf("Error deleting expired segments: %v", err)
+		log.Printf("Error deleting expired segments: %v\n", err)
 	}
 }
 

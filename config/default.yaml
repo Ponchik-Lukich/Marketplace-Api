@@ -7,3 +7,4 @@ database_config:
   password: password
   database: avito
   host: postgres
+migrations: true
